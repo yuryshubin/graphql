@@ -1,0 +1,327 @@
+service: my-app-sync
+frameworkVersion: '3.38.0'
+configValidationMode: error
+
+plugins:
+  # comment in for offline debug
+  - serverless-webpack # https://www.serverless.com/plugins/serverless-webpack
+
+  # uncomment for offline debugDomainName
+#  - serverless-plugin-typescript # https://www.serverless.com/plugins/serverless-plugin-typescript/
+
+package:
+  excludeDevDependencies: true
+  individually: true
+
+custom:
+  account: ${env:AWS_ACCOUNT}
+
+  enterprise:
+    collectLambdaLogs: false
+
+  disableLogs: true
+  tracing: true
+
+  Stage: ${opt:stage}
+  Service: ${self:service}
+  ResourceName: ${self:custom.Stage}-${self:custom.Service}
+  OutputVarPrefix: ${self:custom.Stage}-${self:custom.Service}
+
+#  Domain: get-elevate.com
+#  DomainName: ${cf:${self:custom.InfraCFStack}.HttpApiDomainName}
+#
+  Database: 'testme' # ${cf:${self:custom.InfraCFStack}.Database}
+
+  webpack:
+    webpackConfig: webpack.config.js
+    excludeFiles: '**/*.js'
+    keepOutputDirectory: true
+    includeModules:
+      forceExclude:
+        - aws-sdk
+    concurrency: 2
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  memorySize: 128
+  timeout: 30
+  region: ${env:AWS_REGION}
+  profile: ${env:AWS_PROFILE}
+  stackName: ${self:custom.ResourceName}
+  logRetentionInDays: 14
+  deploymentBucket:
+    name: serverless-levifico-api-${self:provider.region}
+    blockPublicAccess: true
+    skipPolicySetup: true
+    versioning: false # enable bucket versioning. Default is false
+  versionFunctions: false
+  environment:
+    DATABASE: ${self:custom.Database}
+#    COGNITO_USER_POOL_ID: ${self:custom.CognitoUserPoolId}
+    POWERTOOLS_DEV: 1 # for offline only
+  iam:
+    role: LambdaRole
+
+resources:
+  Resources:
+
+    Database:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.ResourceName}
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:custom.ResourceName}
+        AdminCreateUserConfig:
+          AllowAdminCreateUserOnly: false
+        UsernameAttributes:
+          - email
+        AutoVerifiedAttributes:
+          - email
+        EmailConfiguration:
+          EmailSendingAccount: COGNITO_DEFAULT
+        MfaConfiguration: OFF
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: True
+            RequireNumbers: True
+            RequireSymbols: True
+            RequireUppercase: True
+            TemporaryPasswordValidityDays: 7
+
+    CognitoUserPoolClientWeb:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: web
+        UserPoolId:
+          Ref: CognitoUserPool
+        SupportedIdentityProviders:
+          - COGNITO
+        LogoutURLs:
+          - http://localhost:4200/auth/login
+        ExplicitAuthFlows:
+          - ALLOW_CUSTOM_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_USER_SRP_AUTH
+          - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        GenerateSecret: false
+        PreventUserExistenceErrors: ENABLED
+      DependsOn:
+        - CognitoUserPool
+
+    LambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:custom.ResourceName}-lambda
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: ${self:custom.ResourceName}-resources-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:*
+                  Resource: !GetAtt Database.Arn
+                - Effect: Allow
+                  Action:
+                    - cognito-identity:*
+                    - cognito-idp:*
+                  Resource: !GetAtt CognitoUserPool.Arn
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+      DependsOn:
+        - Database
+        - CognitoUserPool
+
+    GraphQLRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:custom.ResourceName}-graphql
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - appsync.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: ${self:custom.ResourceName}-resources-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                    - logs:PutLogEvents
+                    - logs:GetLogEvents
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                  Resource: '*'
+
+    GraphQL:
+      Type: AWS::AppSync::GraphQLApi
+      Properties:
+        ApiType: GRAPHQL
+        AuthenticationType: AMAZON_COGNITO_USER_POOLS
+        UserPoolConfig:
+          AppIdClientRegex: !Ref CognitoUserPoolClientWeb
+          AwsRegion: ${self:provider.region}
+          DefaultAction: ALLOW
+          UserPoolId: !GetAtt CognitoUserPool.Arn
+        AdditionalAuthenticationProviders:
+          - AuthenticationType: API_KEY
+        IntrospectionConfig: ENABLED
+        LogConfig:
+          CloudWatchLogsRoleArn: arn:aws:iam::855046591317:role/service-role/appsync-graphqlapi-logs-us-east-1
+          ExcludeVerboseContent: false
+          FieldLogLevel: ALL
+        Name: ${self:custom.ResourceName}
+        OwnerContact: crusher83@gmail.com
+        Visibility: GLOBAL
+        XrayEnabled: true
+      DependsOn:
+        - CognitoUserPool
+        - CognitoUserPoolClientWeb
+
+    GraphQLApiKey:
+      Type: AWS::AppSync::ApiKey
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Description: Default ApiKey
+        Expires: 1736118116
+      DependsOn:
+        - GraphQL
+
+    GraphQLSchema:
+      Type: AWS::AppSync::GraphQLSchema
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Definition: ${file(./schema.graphql)}
+      DependsOn:
+        - GraphQL
+
+    ResolverGlobal:
+      Type: AWS::AppSync::DataSource
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Description: 'global lambda resolver'
+        LambdaConfig:
+          LambdaFunctionArn: arn:aws:lambda:${self:provider.region}:${self:custom.account}:function:${self:custom.Service}-${self:custom.Stage}-GlobalResolver
+        Name: LambdaGlobalResolver
+        ServiceRoleArn: !GetAtt GraphQLRole.Arn
+        Type: AWS_LAMBDA
+      DependsOn:
+        - GraphQLRole
+        - GraphQL
+
+    GetUsersResolverAssignment:
+      Type: AWS::AppSync::Resolver
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Code: ${file(./lambda-resolver.js.template)}
+        DataSourceName: !GetAtt ResolverGlobal.Name
+        FieldName: getUsers
+        Kind: UNIT
+        Runtime:
+          Name: APPSYNC_JS
+          RuntimeVersion: 1.0.0
+        TypeName: Query
+      DependsOn:
+        - GraphQL
+        - ResolverGlobal
+
+    GetUserResolverAssignment:
+      Type: AWS::AppSync::Resolver
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Code: ${file(./lambda-resolver.js.template)}
+        DataSourceName: !GetAtt ResolverGlobal.Name
+        FieldName: getUser
+        Kind: UNIT
+        Runtime:
+          Name: APPSYNC_JS
+          RuntimeVersion: 1.0.0
+        TypeName: Query
+      DependsOn:
+        - GraphQL
+        - ResolverGlobal
+
+    CreateUserResolverAssignment:
+      Type: AWS::AppSync::Resolver
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Code: ${file(./lambda-resolver.js.template)}
+        DataSourceName: !GetAtt ResolverGlobal.Name
+        FieldName: createUser
+        Kind: UNIT
+        Runtime:
+          Name: APPSYNC_JS
+          RuntimeVersion: 1.0.0
+        TypeName: Mutation
+      DependsOn:
+        - GraphQL
+        - ResolverGlobal
+
+    AddJobResolverAssignment:
+      Type: AWS::AppSync::Resolver
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Code: ${file(./lambda-resolver.js.template)}
+        DataSourceName: !GetAtt ResolverGlobal.Name
+        FieldName: addJob
+        Kind: UNIT
+        Runtime:
+          Name: APPSYNC_JS
+          RuntimeVersion: 1.0.0
+        TypeName: Mutation
+      DependsOn:
+        - GraphQL
+        - ResolverGlobal
+
+    JobsFieldResolverAssignment:
+      Type: AWS::AppSync::Resolver
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Code: ${file(./lambda-resolver.js.template)}
+        DataSourceName: !GetAtt ResolverGlobal.Name
+        FieldName: jobs
+        Kind: UNIT
+        Runtime:
+          Name: APPSYNC_JS
+          RuntimeVersion: 1.0.0
+        TypeName: User
+      DependsOn:
+        - GraphQL
+        - ResolverGlobal
+
+functions:
+  GlobalResolver:
+    handler: src/global-resolver.handler
+    disableLogs: ${self:custom.disableLogs}
+    environment:
+      DATABASE: !Ref Database

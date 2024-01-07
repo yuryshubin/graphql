@@ -1,0 +1,29 @@
+{
+  "name": "app-sync",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "3.454.0",
+    "@types/aws-lambda": "^8.10.131",
+    "@types/gulp": "^4.0.17",
+    "gulp": "^4.0.2",
+    "prettier": "^3.1.1",
+    "serverless": "^3.38.0",
+    "serverless-plugin-typescript": "^2.1.5",
+    "serverless-webpack": "^5.13.0",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-node-externals": "^3.0.0"
+  },
+  "dependencies": {
+    "electrodb": "^2.12.3"
+  }
+}

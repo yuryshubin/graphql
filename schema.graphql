@@ -1,0 +1,57 @@
+input AddJobInput {
+    userId: ID!
+    company: String!
+    from: Int!
+    to: Int!
+}
+
+input CreateUserInput {
+    email: String!
+    location: String!
+    firstName: String!
+    lastName: String!
+    role: String!
+}
+
+input GetJobsInput {
+    userId: ID!
+}
+
+input GetUserInput {
+    userId: ID!
+}
+
+input GetUsersInput {
+    token: String!
+}
+
+type Job {
+    userId: ID!
+    jobId: ID!
+    company: String!
+    from: Int!
+    to: Int!
+}
+
+type User @aws_api_key {
+    userId: ID!
+    email: String!
+    location: String!
+    firstName: String!
+    lastName: String!
+    role: String!
+    jobs: [Job]
+}
+
+type Mutation {
+    createUser(input: CreateUserInput!): User
+    addJob(input: AddJobInput!): Job
+}
+
+type Query {
+    getUser(input: GetUserInput!): User
+
+    getJobs(input: GetJobsInput!): [Job!]!
+
+    getUsers(input: GetUsersInput!): [User!]! @aws_api_key
+}
