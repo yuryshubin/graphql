@@ -5,12 +5,19 @@ input AddJobInput {
     to: Int!
 }
 
+enum Role {
+    fullStack
+    tested
+    backend
+    frontend
+}
+
 input CreateUserInput {
     email: String!
     location: String!
     firstName: String!
     lastName: String!
-    role: String!
+    role: Role!
 }
 
 input GetJobsInput {
@@ -39,7 +46,7 @@ type User @aws_api_key {
     location: String!
     firstName: String!
     lastName: String!
-    role: String!
+    role: Role!
     jobs: [Job]
 }
 
