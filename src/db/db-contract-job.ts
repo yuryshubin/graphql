@@ -2,12 +2,12 @@ import { Entity } from "electrodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { EnvironmentManager } from "../environment-manager";
 
-export const DbJob = new Entity(
+export const DbContactJob = new Entity(
   {
     model: {
-      entity: "job",
+      entity: "contractJob",
       version: "1",
-      service: "job",
+      service: "contractJob",
     },
     attributes: {
       userId: {
@@ -27,6 +27,9 @@ export const DbJob = new Entity(
         required: true,
       },
       to: {
+        type: "number"
+      },
+      hourlySalary: {
         type: "number",
         required: true,
       }

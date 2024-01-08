@@ -287,13 +287,29 @@ resources:
         - GraphQL
         - ResolverGlobal
 
-    AddJobResolverAssignment:
+    AddFullTimeJobResolverAssignment:
       Type: AWS::AppSync::Resolver
       Properties:
         ApiId: !GetAtt GraphQL.ApiId
         Code: ${file(./lambda-resolver.js.template)}
         DataSourceName: !GetAtt ResolverGlobal.Name
-        FieldName: addJob
+        FieldName: addFullTimeJob
+        Kind: UNIT
+        Runtime:
+          Name: APPSYNC_JS
+          RuntimeVersion: 1.0.0
+        TypeName: Mutation
+      DependsOn:
+        - GraphQL
+        - ResolverGlobal
+
+    AddContractJobResolverAssignment:
+      Type: AWS::AppSync::Resolver
+      Properties:
+        ApiId: !GetAtt GraphQL.ApiId
+        Code: ${file(./lambda-resolver.js.template)}
+        DataSourceName: !GetAtt ResolverGlobal.Name
+        FieldName: addContractJob
         Kind: UNIT
         Runtime:
           Name: APPSYNC_JS
@@ -318,6 +334,34 @@ resources:
       DependsOn:
         - GraphQL
         - ResolverGlobal
+
+  Outputs:
+    Database:
+      Value: !Ref Database
+      Export:
+        Name: ${self:custom.OutputVarPrefix}-Database
+    DatabaseArn:
+      Value: !GetAtt Database.Arn
+      Export:
+        Name: ${self:custom.OutputVarPrefix}-DatabaseArn
+    CognitoUserPoolName:
+      Value: ${self:custom.ResourceName}
+      Export:
+        Name: ${self:custom.OutputVarPrefix}-CognitoUserPoolName
+    CognitoUserPoolId:
+      Value:
+        Ref: CognitoUserPool
+      Export:
+        Name: ${self:custom.OutputVarPrefix}-CognitoUserPoolId
+    CognitoUserPoolArn:
+      Value: !GetAtt CognitoUserPool.Arn
+      Export:
+        Name: ${self:custom.OutputVarPrefix}-CognitoUserPoolArn
+    CognitoUserPoolClientWebId:
+      Value:
+        Ref: CognitoUserPoolClientWeb
+      Export:
+        Name: ${self:custom.OutputVarPrefix}-CognitoUserPoolClientWebId
 
 functions:
   GlobalResolver:
