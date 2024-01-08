@@ -1,16 +1,16 @@
 input AddContractJobInput {
     userId: ID!
     company: String!
-    from: Int!
-    to: Int
+    from: AWSDate!
+    to: AWSDate
     hourlySalary: Int!
 }
 
 input AddFullTimeJobInput {
     userId: ID!
     company: String!
-    from: Int!
-    to: Int
+    from: AWSDate!
+    to: AWSDate
     pensionPlan: Boolean!
     yearlySalary: Int!
 }
@@ -19,8 +19,8 @@ type ContractJob implements Job {
     userId: ID!
     jobId: ID!
     company: String!
-    from: Int!
-    to: Int
+    from: AWSDate!
+    to: AWSDate
     hourlySalary: Int!
 }
 
@@ -36,8 +36,8 @@ type FullTimeJob implements Job {
     userId: ID!
     jobId: ID!
     company: String!
-    from: Int!
-    to: Int
+    from: AWSDate!
+    to: AWSDate
     pensionPlan: Boolean!
     yearlySalary: Int!
 }
@@ -58,8 +58,8 @@ interface Job {
     userId: ID!
     jobId: ID!
     company: String!
-    from: Int!
-    to: Int
+    from: AWSDate!
+    to: AWSDate
 }
 
 enum Role {
@@ -92,4 +92,9 @@ type Query {
     getUsers(input: GetUsersInput!): [User!]!
     @aws_api_key
     @aws_cognito_user_pools
+}
+
+type Subscription {
+    addedContractJob: ContractJob
+    @aws_subscribe(mutations: ["addContractJob"])
 }

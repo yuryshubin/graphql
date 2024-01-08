@@ -23,11 +23,11 @@ export const DbContactJob = new Entity(
         required: true,
       },
       from: {
-        type: "number",
+        type: "string",
         required: true,
       },
       to: {
-        type: "number"
+        type: "string"
       },
       hourlySalary: {
         type: "number",

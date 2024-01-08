@@ -5,7 +5,6 @@ import * as crypto from "crypto";
 import { DbFullTimeJob, DbContactJob } from "./db";
 
 enum JobType {
-
   FullTimeJob = "FullTimeJob",
   ContractJob = "ContractJob",
 }
@@ -154,6 +153,7 @@ const getUser = async (event: GraphQLInput) => {
 const addFullTimeJob = async (event: GraphQLInput) => {
   const params = event.args.input as Record<string, any>;
   params["jobId"] = crypto.randomUUID();
+
   console.info("create FullTimeJob...", params);
 
   const response = await DbFullTimeJob.put(params as any).go();
@@ -169,7 +169,8 @@ const addFullTimeJob = async (event: GraphQLInput) => {
 const addContractJob = async (event: GraphQLInput) => {
   const params = event.args.input as Record<string, any>;
   params["jobId"] = crypto.randomUUID();
-  console.info("create FullTimeJob...", params);
+
+  console.info("create ContractJob...", params);
 
   const response = await DbContactJob.put(params as any).go();
   console.info(`response`, JSON.stringify(response, null, 2));
@@ -197,28 +198,28 @@ const getJobsByUserIdInternal = async (
   if (selectionSetList.length || fragments[JobType.FullTimeJob]?.length) {
     const extras1 = fragments[JobType.FullTimeJob] || [];
     const response1 = await DbFullTimeJob.query
-    .byUser({userId})
-    .go({limit: 10, select: selectionSetList.concat(...extras1)});
+      .byUser({ userId })
+      .go({ limit: 10, select: selectionSetList.concat(...extras1) });
     console.info(`response full time jobs`, JSON.stringify(response1, null, 2));
     const entities1 = response1.data as EntityRecord<typeof DbFullTimeJob>[];
-    entities1.forEach(
-         (x) => ((x as Record<string, any>)["__typename"] = JobType.FullTimeJob),
-    );
+    entities1.forEach((x) => {
+      (x as Record<string, any>)["__typename"] = JobType.FullTimeJob;
+    });
     console.info(`entities full time jobs`, JSON.stringify(entities1, null, 2));
     results.push(...entities1);
   }
 
   // case 2
-  if(selectionSetList.length || fragments[JobType.ContractJob]?.length) {
+  if (selectionSetList.length || fragments[JobType.ContractJob]?.length) {
     const extras2 = fragments[JobType.ContractJob] || [];
     const response2 = await DbContactJob.query
-    .byUser({userId})
-    .go({limit: 10, select: selectionSetList.concat(...extras2)});
+      .byUser({ userId })
+      .go({ limit: 10, select: selectionSetList.concat(...extras2) });
     console.info(`response contract jobs`, JSON.stringify(response2, null, 2));
     const entities2 = response2.data as EntityRecord<typeof DbContactJob>[];
-    entities2.forEach(
-         (x) => ((x as Record<string, any>)["__typename"] = JobType.ContractJob),
-    );
+    entities2.forEach((x) => {
+      (x as Record<string, any>)["__typename"] = JobType.ContractJob;
+    });
     console.info(`entities contract jobs`, JSON.stringify(entities2, null, 2));
     results.push(...entities2);
   }
