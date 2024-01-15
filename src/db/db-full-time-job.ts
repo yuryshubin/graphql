@@ -1,6 +1,7 @@
 import { Entity } from "electrodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { EnvironmentManager } from "../environment-manager";
+import {logger} from "../logger";
 
 export const DbFullTimeJob = new Entity(
   {
@@ -54,6 +55,6 @@ export const DbFullTimeJob = new Entity(
   {
     client: new DynamoDBClient(),
     table: EnvironmentManager.getDb(),
-    logger: (event) => console.log(event),
+    logger: (event) => logger.debug('DBFullTimeJob', {event}),
   },
 );

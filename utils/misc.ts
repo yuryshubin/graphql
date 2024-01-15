@@ -13,17 +13,4 @@ export class MiscUtils {
       proc.stderr?.pipe(process.stderr);
     });
   }
-
-  static replaceInFile(
-    templateFile: string,
-    outputFile: string,
-    replacements: { key: string | RegExp; value: string }[],
-  ) {
-    let content = fs.readFileSync(templateFile, { encoding: "utf-8" });
-
-    replacements.forEach((replacement) => {
-      content = content.replace(replacement.key, replacement.value);
-    });
-    fs.writeFileSync(outputFile, content);
-  }
 }

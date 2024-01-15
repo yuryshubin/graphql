@@ -27,10 +27,7 @@ custom:
   ResourceName: ${self:custom.Stage}-${self:custom.Service}
   OutputVarPrefix: ${self:custom.Stage}-${self:custom.Service}
 
-#  Domain: get-elevate.com
-#  DomainName: ${cf:${self:custom.InfraCFStack}.HttpApiDomainName}
-#
-  Database: 'testme' # ${cf:${self:custom.InfraCFStack}.Database}
+  Database: 'testme'
 
   webpack:
     webpackConfig: webpack.config.js
@@ -58,7 +55,6 @@ provider:
   versionFunctions: false
   environment:
     DATABASE: ${self:custom.Database}
-#    COGNITO_USER_POOL_ID: ${self:custom.CognitoUserPoolId}
     POWERTOOLS_DEV: 1 # for offline only
   iam:
     role: LambdaRole
@@ -208,15 +204,6 @@ resources:
         - CognitoUserPool
         - CognitoUserPoolClientWeb
 
-    GraphQLApiKey:
-      Type: AWS::AppSync::ApiKey
-      Properties:
-        ApiId: !GetAtt GraphQL.ApiId
-        Description: Default ApiKey
-        Expires: 1736118116
-      DependsOn:
-        - GraphQL
-
     GraphQLSchema:
       Type: AWS::AppSync::GraphQLSchema
       Properties:
@@ -231,13 +218,14 @@ resources:
         ApiId: !GetAtt GraphQL.ApiId
         Description: 'global lambda resolver'
         LambdaConfig:
-          LambdaFunctionArn: arn:aws:lambda:${self:provider.region}:${self:custom.account}:function:${self:custom.Service}-${self:custom.Stage}-GlobalResolver
+          LambdaFunctionArn: !GetAtt GlobalResolverLambdaFunction.Arn
         Name: LambdaGlobalResolver
         ServiceRoleArn: !GetAtt GraphQLRole.Arn
         Type: AWS_LAMBDA
       DependsOn:
         - GraphQLRole
         - GraphQL
+        - GlobalResolverLambdaFunction
 
     GetUsersResolverAssignment:
       Type: AWS::AppSync::Resolver

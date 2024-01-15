@@ -1,6 +1,7 @@
 import { Entity } from "electrodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { EnvironmentManager } from "../environment-manager";
+import {logger} from "../logger";
 
 export const DbUser = new Entity(
   {
@@ -51,6 +52,6 @@ export const DbUser = new Entity(
   {
     client: new DynamoDBClient(),
     table: EnvironmentManager.getDb(),
-    logger: event => console.log(JSON.stringify(event)),
+    logger: (event) => logger.debug('DBUser', {event}),
   },
 );
